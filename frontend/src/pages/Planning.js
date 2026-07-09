@@ -33,6 +33,12 @@ export default function Planning() {
     setDirty(d => ({ ...d, [id]: true }));
   };
 
+  const updateMeta = (id, field, value) => {
+    const num = parseFloat(value) || 0;
+    setIngs(rs => rs.map(r => r.id === id ? { ...r, [field]: num } : r));
+    setDirty(d => ({ ...d, [id]: true }));
+  };
+
   const saveAll = async () => {
     setSaving(true);
     try {
@@ -71,8 +77,9 @@ export default function Planning() {
                 <tr>
                   <th className="sticky left-0 z-20 bg-[#F1EFEB]">Ingredient</th>
                   <th>Unit</th>
-                  <th className="num">Cost</th>
-                  <th className="num">Buffer%</th>
+                  <th className="num">Cost / Unit</th>
+                  <th className="num">Yield %</th>
+                  <th className="num">Buffer %</th>
                   {ORDER_CYCLES.map(c => (
                     <th key={c} colSpan={4} className="text-center border-l border-[#E6E2DC]">{c}</th>
                   ))}
@@ -80,7 +87,7 @@ export default function Planning() {
                 </tr>
                 <tr>
                   <th className="sticky left-0 z-20 bg-[#F1EFEB]"></th>
-                  <th></th><th></th><th></th>
+                  <th></th><th></th><th></th><th></th>
                   {ORDER_CYCLES.map(c => (
                     <Fragment key={c}>
                       <th className="num text-[10px] border-l border-[#E6E2DC]">Req</th>
@@ -105,8 +112,33 @@ export default function Planning() {
                     <tr key={r.id} data-testid={`plan-row-${r.id}`}>
                       <td className="sticky left-0 z-10 bg-inherit font-medium">{r.ingredient}</td>
                       <td className="text-[#8A8178]">{r.unit}</td>
-                      <td className="num">{inr(r.cost_per_unit)}</td>
-                      <td className="num">{(r.buffer_pct * 100).toFixed(0)}%</td>
+                      <td className="num p-0">
+                        <input
+                          type="number" step="0.01" min="0"
+                          data-testid={`plan-cost-${r.id}`}
+                          className="inline-input"
+                          value={r.cost_per_unit ?? 0}
+                          onChange={e => updateMeta(r.id, "cost_per_unit", e.target.value)}
+                        />
+                      </td>
+                      <td className="num p-0">
+                        <input
+                          type="number" step="0.01" min="0" max="1"
+                          data-testid={`plan-yield-${r.id}`}
+                          className="inline-input"
+                          value={r.yield_pct ?? 1}
+                          onChange={e => updateMeta(r.id, "yield_pct", e.target.value)}
+                        />
+                      </td>
+                      <td className="num p-0">
+                        <input
+                          type="number" step="0.01" min="0" max="1"
+                          data-testid={`plan-buffer-${r.id}`}
+                          className="inline-input"
+                          value={r.buffer_pct ?? 0.02}
+                          onChange={e => updateMeta(r.id, "buffer_pct", e.target.value)}
+                        />
+                      </td>
                       {ORDER_CYCLES.map(c => {
                         const pc = p?.cycles?.[c] || {};
                         return (

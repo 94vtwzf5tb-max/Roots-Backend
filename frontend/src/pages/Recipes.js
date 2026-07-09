@@ -121,6 +121,21 @@ export default function Recipes() {
     load();
   };
 
+  const saveLineField = async (line, field, rawValue) => {
+    const value = parseFloat(rawValue) || 0;
+    if (value === line[field]) return; // no-op
+    try {
+      await api.put(`/recipes/${line.id}`, {
+        ingredient: line.ingredient, unit: line.unit,
+        sku_menu_item: line.sku_menu_item, qty_per_sku: line.qty_per_sku,
+        cost_per_unit: line.cost_per_unit, category: line.category,
+        selling_price: line.selling_price, [field]: value,
+      });
+      toast.success(`${line.ingredient}: ${field} updated`);
+      load();
+    } catch (err) { toast.error(formatApiError(err)); }
+  };
+
   const totalCost = form.ingredients.reduce((s, l) => s + (parseFloat(l.qty_per_sku) || 0) * (parseFloat(l.cost_per_unit) || 0), 0);
   const margin = (form.selling_price - totalCost);
 
@@ -208,11 +223,25 @@ export default function Recipes() {
                           </thead>
                           <tbody>
                             {g.ingredients.map(i => (
-                              <tr key={i.id} style={{ background: "transparent" }}>
+                              <tr key={i.id} style={{ background: "transparent" }} data-testid={`recipe-line-${i.id}`}>
                                 <td>{i.ingredient}</td>
                                 <td className="text-[#8A8178]">{i.unit}</td>
-                                <td className="num">{i.qty_per_sku}</td>
-                                <td className="num">{inr(i.cost_per_unit)}</td>
+                                <td className="num p-0">
+                                  <input
+                                    type="number" step="0.01" defaultValue={i.qty_per_sku}
+                                    data-testid={`inline-qty-${i.id}`}
+                                    onBlur={e => saveLineField(i, "qty_per_sku", e.target.value)}
+                                    className="inline-input"
+                                  />
+                                </td>
+                                <td className="num p-0">
+                                  <input
+                                    type="number" step="0.01" defaultValue={i.cost_per_unit}
+                                    data-testid={`inline-cost-${i.id}`}
+                                    onBlur={e => saveLineField(i, "cost_per_unit", e.target.value)}
+                                    className="inline-input"
+                                  />
+                                </td>
                                 <td className="num">{inr((i.qty_per_sku || 0) * (i.cost_per_unit || 0))}</td>
                                 <td className="text-right">
                                   <button onClick={() => delOne(i.id)} data-testid={`delete-line-${i.id}`}

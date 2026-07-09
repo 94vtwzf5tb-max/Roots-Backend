@@ -740,7 +740,10 @@ async def import_excel(
                 "qty_per_sku": qty, "cost_per_unit": cost,
                 "category": category, "selling_price": price,
             })
-            ingredients_seen[ingredient] = (unit, cost)
+            # Prefer the highest (non-zero) cost seen for an ingredient across recipes
+            prev = ingredients_seen.get(ingredient)
+            if prev is None or (prev[1] == 0 and cost > 0) or cost > prev[1]:
+                ingredients_seen[ingredient] = (unit, cost)
 
         for doc in rows_to_insert:
             try:
