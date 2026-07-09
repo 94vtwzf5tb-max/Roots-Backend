@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, Fragment } from "react";
 import api from "@/lib/api";
 import { PageHeader } from "@/components/PageHeader";
 import { ORDER_CYCLES, inr } from "@/lib/helpers";
@@ -82,12 +82,12 @@ export default function Planning() {
                   <th className="sticky left-0 z-20 bg-[#F1EFEB]"></th>
                   <th></th><th></th><th></th>
                   {ORDER_CYCLES.map(c => (
-                    <>
-                      <th key={c+"r"} className="num text-[10px] border-l border-[#E6E2DC]">Req</th>
-                      <th key={c+"i"} className="num text-[10px]">Inv</th>
-                      <th key={c+"w"} className="num text-[10px]">Wast</th>
-                      <th key={c+"o"} className="num text-[10px] bg-[#F6F1EA]">Order</th>
-                    </>
+                    <Fragment key={c}>
+                      <th className="num text-[10px] border-l border-[#E6E2DC]">Req</th>
+                      <th className="num text-[10px]">Inv</th>
+                      <th className="num text-[10px]">Wast</th>
+                      <th className="num text-[10px] bg-[#F6F1EA]">Order</th>
+                    </Fragment>
                   ))}
                   <th className="num bg-[#F1EFEB]"></th>
                 </tr>
@@ -110,11 +110,11 @@ export default function Planning() {
                       {ORDER_CYCLES.map(c => {
                         const pc = p?.cycles?.[c] || {};
                         return (
-                          <>
-                            <td key={c+"r"} className="num text-[#5B544D] border-l border-[#E6E2DC]">
+                          <Fragment key={c}>
+                            <td className="num text-[#5B544D] border-l border-[#E6E2DC]">
                               {pc.required || 0}
                             </td>
-                            <td key={c+"i"} className="num p-0">
+                            <td className="num p-0">
                               <input
                                 data-testid={`inv-${r.id}-${c}`}
                                 type="number"
@@ -123,7 +123,7 @@ export default function Planning() {
                                 onChange={e => updateCell(r.id, "inventory", c, e.target.value)}
                               />
                             </td>
-                            <td key={c+"w"} className="num p-0">
+                            <td className="num p-0">
                               <input
                                 data-testid={`wast-${r.id}-${c}`}
                                 type="number"
@@ -132,12 +132,12 @@ export default function Planning() {
                                 onChange={e => updateCell(r.id, "wastage", c, e.target.value)}
                               />
                             </td>
-                            <td key={c+"o"} className="num font-medium bg-[#F6F1EA]">
+                            <td className="num font-medium bg-[#F6F1EA]">
                               <span className={pc.to_order > 0 ? "text-[#A44200]" : "text-[#8A8178]"}>
                                 {pc.to_order || 0}
                               </span>
                             </td>
-                          </>
+                          </Fragment>
                         );
                       })}
                       <td className="num font-medium bg-[#F1EFEB]">{inr(p?.monthly_value || 0)}</td>
