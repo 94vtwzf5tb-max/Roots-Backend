@@ -131,6 +131,7 @@ class Settings(BaseModel):
     wastage_alert_pct: float = 0.05
     order_value_alert_pct: float = 0.5
     business_name: str = "ROOTS"
+    cycle_dates: Dict[str, Optional[str]] = Field(default_factory=dict)  # {"O1": "2026-02-01", ...}
 
 class Recipe(BaseModel):
     id: Optional[str] = None
@@ -255,9 +256,14 @@ async def me(user: dict = Depends(get_current_user)):
 @api.get("/settings")
 async def get_settings(_: dict = Depends(get_current_user)):
     s = await db.settings.find_one({"_id": "singleton"})
+    defaults = Settings().model_dump()
     if not s:
-        s = Settings().model_dump()
-    s.pop("_id", None)
+        s = defaults
+    else:
+        s.pop("_id", None)
+        # Backfill any missing fields with defaults (schema evolution)
+        for k, v in defaults.items():
+            s.setdefault(k, v)
     return s
 
 @api.put("/settings")
@@ -412,9 +418,21 @@ async def list_ingredients(_: dict = Depends(get_current_user)):
 
 @api.put("/ingredients/{iid}")
 async def update_ingredient(iid: str, data: IngredientMeta, _: dict = Depends(get_current_user)):
+    # Detect cost change to propagate to recipes
+    existing = await db.ingredients.find_one({"_id": ObjectId(iid)})
     doc = data.model_dump(exclude={"id"})
     await db.ingredients.update_one({"_id": ObjectId(iid)}, {"$set": doc})
-    return {**doc, "id": iid}
+
+    # Propagate cost change to all recipes referencing this ingredient
+    propagated = 0
+    if existing and existing.get("cost_per_unit") != data.cost_per_unit:
+        res = await db.recipes.update_many(
+            {"ingredient": data.ingredient},
+            {"$set": {"cost_per_unit": data.cost_per_unit, "unit": data.unit}}
+        )
+        propagated = res.modified_count
+
+    return {**doc, "id": iid, "recipes_updated": propagated}
 
 # ────────────────────────────────────────────────────────────
 # Planning / Order Generation
@@ -630,8 +648,148 @@ async def variance_check(cycle: str, _: dict = Depends(get_current_user)):
     return result
 
 # ────────────────────────────────────────────────────────────
-# CORS & Mount
+# Excel Import
 # ────────────────────────────────────────────────────────────
+
+from fastapi import UploadFile, File
+
+def _parse_currency(v):
+    if v is None: return 0.0
+    if isinstance(v, (int, float)): return float(v)
+    s = str(v).replace("₹", "").replace(",", "").strip()
+    try: return float(s)
+    except: return 0.0
+
+def _parse_num(v):
+    if v is None: return 0.0
+    if isinstance(v, (int, float)): return float(v)
+    try: return float(str(v).strip())
+    except: return 0.0
+
+@api.post("/import/excel")
+async def import_excel(
+    file: UploadFile = File(...),
+    replace: bool = False,
+    _: dict = Depends(get_current_user),
+):
+    """Import from AMBALA CITY ORDER SHEET-style Excel workbook.
+    Reads: Setup, Recipe Mapping, SKU Forecast sheets.
+    """
+    import openpyxl
+    from io import BytesIO
+
+    content = await file.read()
+    try:
+        wb = openpyxl.load_workbook(BytesIO(content), data_only=True)
+    except Exception as e:
+        raise HTTPException(400, f"Could not open Excel file: {e}")
+
+    stats = {"recipes_created": 0, "recipes_skipped": 0, "skus_created": 0,
+             "settings_updated": False, "sheets_found": wb.sheetnames}
+
+    if replace:
+        await db.recipes.delete_many({})
+        await db.forecasts.delete_many({})
+        await db.ingredients.delete_many({})
+
+    # ---- Setup ----
+    if "Setup" in wb.sheetnames:
+        ws = wb["Setup"]
+        settings = await db.settings.find_one({"_id": "singleton"}) or Settings().model_dump()
+        settings.pop("_id", None)
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            if not row or not row[0]: continue
+            key = str(row[0]).strip()
+            val = row[1]
+            if key == "Current Order Cycle" and val:
+                settings["current_cycle"] = str(val).replace("Order ", "O")
+            elif key == "Weeks in Month" and val is not None:
+                settings["weeks_in_month"] = _parse_num(val)
+            elif key == "Orders per Week" and val is not None:
+                settings["orders_per_week"] = _parse_num(val)
+            elif key == "Total Order Cycles" and val is not None:
+                settings["total_cycles"] = int(_parse_num(val))
+            elif key == "Default Buffer %" and val is not None:
+                settings["default_buffer_pct"] = _parse_num(val)
+            elif key == "Wastage Alert %" and val is not None:
+                settings["wastage_alert_pct"] = _parse_num(val)
+            elif key == "Order Value Alert %" and val is not None:
+                settings["order_value_alert_pct"] = _parse_num(val)
+            elif key == "Business" and val:
+                settings["business_name"] = str(val).strip()
+        settings["_id"] = "singleton"
+        await db.settings.replace_one({"_id": "singleton"}, settings, upsert=True)
+        stats["settings_updated"] = True
+
+    # ---- Recipe Mapping ----
+    if "Recipe Mapping" in wb.sheetnames:
+        ws = wb["Recipe Mapping"]
+        rows_to_insert = []
+        ingredients_seen = {}
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            if not row or not row[0] or not row[2]: continue
+            ingredient = str(row[0]).strip()
+            unit = str(row[1]).strip() if row[1] else "g/ml/pcs"
+            sku = str(row[2]).strip()
+            qty = _parse_num(row[3])
+            cost = _parse_currency(row[4])
+            category = str(row[5]).strip() if row[5] else "Other"
+            price = _parse_currency(row[6])
+            rows_to_insert.append({
+                "ingredient": ingredient, "unit": unit, "sku_menu_item": sku,
+                "qty_per_sku": qty, "cost_per_unit": cost,
+                "category": category, "selling_price": price,
+            })
+            ingredients_seen[ingredient] = (unit, cost)
+
+        for doc in rows_to_insert:
+            try:
+                await db.recipes.insert_one(dict(doc))
+                stats["recipes_created"] += 1
+            except Exception:
+                stats["recipes_skipped"] += 1
+
+        # Upsert ingredients metadata
+        for name, (unit, cost) in ingredients_seen.items():
+            await _upsert_ingredient(name, unit, cost)
+
+        # Upsert forecast rows (one per SKU)
+        seen_skus = set()
+        for doc in rows_to_insert:
+            if doc["sku_menu_item"] in seen_skus: continue
+            seen_skus.add(doc["sku_menu_item"])
+            await _upsert_forecast(doc["sku_menu_item"], doc["category"], doc["selling_price"])
+            stats["skus_created"] += 1
+
+    # ---- SKU Forecast ----
+    if "SKU Forecast" in wb.sheetnames:
+        ws = wb["SKU Forecast"]
+        # Header row 1: Category, SKU, Price, O1 Last Sales, O1 Forecast, O2 Last Sales, O2 Forecast, ...
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            if not row or not row[1]: continue
+            sku = str(row[1]).strip()
+            category = str(row[0]).strip() if row[0] else "Other"
+            price = _parse_currency(row[2])
+            last_sales = {}
+            forecast = {}
+            # Columns 3..22 alternate last_sales / forecast for O1..O10
+            for i, cycle in enumerate(ORDER_CYCLES):
+                ls_col = 3 + i * 2
+                fc_col = 4 + i * 2
+                if ls_col < len(row) and row[ls_col] is not None:
+                    last_sales[cycle] = _parse_num(row[ls_col])
+                if fc_col < len(row) and row[fc_col] is not None:
+                    forecast[cycle] = _parse_num(row[fc_col])
+            await db.forecasts.update_one(
+                {"sku_menu_item": sku},
+                {"$set": {
+                    "sku_menu_item": sku, "category": category, "selling_price": price,
+                    "last_sales": last_sales, "forecast": forecast,
+                }},
+                upsert=True,
+            )
+
+    return stats
 
 app.include_router(api)
 

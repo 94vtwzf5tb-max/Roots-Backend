@@ -97,7 +97,7 @@ export default function Order() {
     doc.setFontSize(11);
     doc.text("Order to be Packed", 40, 48);
     doc.setFontSize(10);
-    doc.text(`Cycle: ${cycle}`, pageWidth - 40, 30, { align: "right" });
+    doc.text(`Cycle: ${cycle}${settings?.cycle_dates?.[cycle] ? " · " + new Date(settings.cycle_dates[cycle]).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : ""}`, pageWidth - 40, 30, { align: "right" });
     doc.text(now, pageWidth - 40, 48, { align: "right" });
 
     // Summary
@@ -182,7 +182,11 @@ export default function Order() {
     <div>
       <PageHeader
         title="Order to be Packed"
-        subtitle={`Consolidated order list for cycle ${cycle} · Cantt outlet packs, City outlet receives`}
+        subtitle={
+          `Consolidated order list for cycle ${cycle}` +
+          (settings?.cycle_dates?.[cycle] ? ` (${new Date(settings.cycle_dates[cycle]).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })})` : "") +
+          " · Cantt outlet packs, City outlet receives"
+        }
       >
         <CycleSelector value={cycle} onChange={setCycle} label="Cycle" testId="order-cycle-selector" />
         {hasDirty && <div className="text-[12px] text-[#D97B29]">Unsaved</div>}
