@@ -102,6 +102,13 @@ async def get_current_user(request: Request) -> dict:
     except jwt.InvalidTokenError:
         raise HTTPException(401, "Invalid token")
 
+async def get_optional_user(request: Request) -> Optional[dict]:
+    """Return the current user if authenticated, else None. Never raises."""
+    try:
+        return await get_current_user(request)
+    except HTTPException:
+        return None
+
 # ────────────────────────────────────────────────────────────
 # Pydantic Models
 # ────────────────────────────────────────────────────────────
@@ -254,7 +261,7 @@ async def me(user: dict = Depends(get_current_user)):
 # ────────────────────────────────────────────────────────────
 
 @api.get("/settings")
-async def get_settings(_: dict = Depends(get_current_user)):
+async def get_settings(_: dict = Depends(get_optional_user)):
     s = await db.settings.find_one({"_id": "singleton"})
     defaults = Settings().model_dump()
     if not s:
@@ -283,7 +290,7 @@ def _clean_doc(doc):
     return doc
 
 @api.get("/recipes")
-async def list_recipes(_: dict = Depends(get_current_user)):
+async def list_recipes(_: dict = Depends(get_optional_user)):
     docs = await db.recipes.find().to_list(5000)
     return [_clean_doc(d) for d in docs]
 
@@ -397,7 +404,7 @@ async def _upsert_forecast(sku: str, category: str, price: float):
 # ────────────────────────────────────────────────────────────
 
 @api.get("/forecasts")
-async def list_forecasts(_: dict = Depends(get_current_user)):
+async def list_forecasts(_: dict = Depends(get_optional_user)):
     docs = await db.forecasts.find().to_list(5000)
     return [_clean_doc(d) for d in docs]
 
@@ -412,7 +419,7 @@ async def update_forecast(fid: str, data: SkuForecast, _: dict = Depends(get_cur
 # ────────────────────────────────────────────────────────────
 
 @api.get("/ingredients")
-async def list_ingredients(_: dict = Depends(get_current_user)):
+async def list_ingredients(_: dict = Depends(get_optional_user)):
     docs = await db.ingredients.find().to_list(5000)
     return [_clean_doc(d) for d in docs]
 
@@ -512,11 +519,11 @@ async def _compute_planning():
     return results
 
 @api.get("/planning")
-async def get_planning(_: dict = Depends(get_current_user)):
+async def get_planning(_: dict = Depends(get_optional_user)):
     return await _compute_planning()
 
 @api.get("/order/{cycle}")
-async def get_order(cycle: str, _: dict = Depends(get_current_user)):
+async def get_order(cycle: str, _: dict = Depends(get_optional_user)):
     """Return the to-order list for a specific cycle, grouped by stock category."""
     if cycle not in ORDER_CYCLES:
         raise HTTPException(400, f"Invalid cycle: {cycle}")
@@ -547,7 +554,7 @@ async def get_order(cycle: str, _: dict = Depends(get_current_user)):
 # ────────────────────────────────────────────────────────────
 
 @api.get("/summary")
-async def summary(_: dict = Depends(get_current_user)):
+async def summary(_: dict = Depends(get_optional_user)):
     settings = await db.settings.find_one({"_id": "singleton"}) or Settings().model_dump()
     settings.pop("_id", None)
     rows = await _compute_planning()
@@ -605,7 +612,7 @@ async def summary(_: dict = Depends(get_current_user)):
 # ────────────────────────────────────────────────────────────
 
 @api.get("/variance/{cycle}")
-async def variance_check(cycle: str, _: dict = Depends(get_current_user)):
+async def variance_check(cycle: str, _: dict = Depends(get_optional_user)):
     if cycle not in ORDER_CYCLES:
         raise HTTPException(400, f"Invalid cycle: {cycle}")
     rows = await _compute_planning()

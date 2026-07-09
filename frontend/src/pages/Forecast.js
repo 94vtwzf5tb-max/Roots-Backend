@@ -4,8 +4,10 @@ import { PageHeader } from "@/components/PageHeader";
 import { ORDER_CYCLES, inr, SKU_CATEGORIES } from "@/lib/helpers";
 import { toast } from "sonner";
 import { Save, ToggleLeft, ToggleRight } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Forecast() {
+  const { readOnly } = useAuth();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dirty, setDirty] = useState({});
@@ -72,7 +74,7 @@ export default function Forecast() {
         {hasDirty && <div className="text-[12px] text-[#D97B29]">Unsaved changes</div>}
         <button
           data-testid="save-forecasts-btn"
-          disabled={!hasDirty || saving}
+          disabled={!hasDirty || saving || readOnly}
           onClick={saveAll}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-[#A44200] hover:bg-[#823400] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[13px] rounded-md"
         >

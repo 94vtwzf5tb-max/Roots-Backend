@@ -35,8 +35,10 @@ export function AuthProvider({ children }) {
     setUser(false);
   };
 
+  const readOnly = !user; // Guests see the app in read-only mode
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, refresh }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, refresh, readOnly }}>
       {children}
     </AuthContext.Provider>
   );

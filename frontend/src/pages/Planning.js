@@ -4,8 +4,10 @@ import { PageHeader } from "@/components/PageHeader";
 import { ORDER_CYCLES, inr } from "@/lib/helpers";
 import { toast } from "sonner";
 import { Save } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Planning() {
+  const { readOnly } = useAuth();
   const [ings, setIngs] = useState([]);
   const [planning, setPlanning] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -61,7 +63,7 @@ export default function Planning() {
         {hasDirty && <div className="text-[12px] text-[#D97B29]">Unsaved changes</div>}
         <button
           data-testid="save-planning-btn"
-          disabled={!hasDirty || saving}
+          disabled={!hasDirty || saving || readOnly}
           onClick={saveAll}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-[#A44200] hover:bg-[#823400] disabled:opacity-50 text-white text-[13px] rounded-md"
         >

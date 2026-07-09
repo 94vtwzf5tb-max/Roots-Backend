@@ -4,8 +4,10 @@ import { PageHeader } from "@/components/PageHeader";
 import { ORDER_CYCLES, STOCK_CATEGORIES, formatApiError } from "@/lib/helpers";
 import { toast } from "sonner";
 import { Save, Upload, FileSpreadsheet, AlertTriangle } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Settings() {
+  const { readOnly } = useAuth();
   const [s, setS] = useState(null);
   const [ings, setIngs] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -78,8 +80,8 @@ export default function Settings() {
   return (
     <div>
       <PageHeader title="Setup" subtitle="Business config, cycle dates, imports & ingredient categorization">
-        <button data-testid="save-settings-btn" onClick={save} disabled={saving}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#A44200] hover:bg-[#823400] text-white text-[13px] rounded-md">
+        <button data-testid="save-settings-btn" onClick={save} disabled={saving || readOnly}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#A44200] hover:bg-[#823400] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[13px] rounded-md">
           <Save className="w-3.5 h-3.5" /> {saving ? "Saving…" : "Save"}
         </button>
       </PageHeader>
@@ -109,9 +111,9 @@ export default function Settings() {
                 />
                 <button
                   onClick={() => fileRef.current?.click()}
-                  disabled={importing}
+                  disabled={importing || readOnly}
                   data-testid="import-excel-btn"
-                  className="flex items-center gap-2 px-4 py-2 bg-[#A44200] hover:bg-[#823400] disabled:opacity-60 text-white text-[13px] rounded-md"
+                  className="flex items-center gap-2 px-4 py-2 bg-[#A44200] hover:bg-[#823400] disabled:opacity-60 disabled:cursor-not-allowed text-white text-[13px] rounded-md"
                 >
                   <Upload className="w-3.5 h-3.5" /> {importing ? "Importing…" : "Choose Excel File"}
                 </button>

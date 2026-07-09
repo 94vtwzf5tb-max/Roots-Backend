@@ -1,8 +1,8 @@
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import {
   LayoutDashboard, BookOpen, LineChart, Layers,
-  PackageCheck, GitCompare, Settings, LogOut, Wheat
+  PackageCheck, GitCompare, Settings, LogOut, Wheat, LogIn, Eye
 } from "lucide-react";
 
 const nav = [
@@ -16,7 +16,7 @@ const nav = [
 ];
 
 export default function Sidebar() {
-  const { user, logout } = useAuth();
+  const { user, logout, readOnly } = useAuth();
   const loc = useLocation();
 
   return (
@@ -62,25 +62,41 @@ export default function Sidebar() {
       </nav>
 
       <div className="p-3 border-t border-[#E6E2DC]">
-        <div className="flex items-center gap-3 px-3 py-2">
-          <div className="w-8 h-8 rounded-full bg-[#D97B29] flex items-center justify-center text-white text-sm font-medium">
-            {user?.name?.[0]?.toUpperCase() || "?"}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-[13px] font-medium text-[#2D2824] truncate" data-testid="sidebar-user-name">
-              {user?.name}
+        {user ? (
+          <div className="flex items-center gap-3 px-3 py-2">
+            <div className="w-8 h-8 rounded-full bg-[#D97B29] flex items-center justify-center text-white text-sm font-medium">
+              {user?.name?.[0]?.toUpperCase() || "?"}
             </div>
-            <div className="text-[11px] text-[#8A8178] truncate">{user?.role}</div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[13px] font-medium text-[#2D2824] truncate" data-testid="sidebar-user-name">
+                {user?.name}
+              </div>
+              <div className="text-[11px] text-[#8A8178] truncate">{user?.role}</div>
+            </div>
+            <button
+              data-testid="logout-btn"
+              onClick={logout}
+              className="p-2 rounded-md hover:bg-[#F9E5E5] text-[#8A8178] hover:text-[#B83A3A] transition-colors"
+              title="Log out"
+            >
+              <LogOut className="w-4 h-4" strokeWidth={2} />
+            </button>
           </div>
-          <button
-            data-testid="logout-btn"
-            onClick={logout}
-            className="p-2 rounded-md hover:bg-[#F9E5E5] text-[#8A8178] hover:text-[#B83A3A] transition-colors"
-            title="Log out"
-          >
-            <LogOut className="w-4 h-4" strokeWidth={2} />
-          </button>
-        </div>
+        ) : (
+          <div className="space-y-2 px-1">
+            <div className="flex items-center gap-2 px-3 py-2 bg-white/60 border border-[#E6E2DC] rounded-md">
+              <Eye className="w-3.5 h-3.5 text-[#8A8178]" />
+              <span className="text-[11px] font-medium text-[#5B544D] tracking-wide">Read-only mode</span>
+            </div>
+            <Link
+              to="/login"
+              data-testid="sidebar-login-btn"
+              className="flex items-center justify-center gap-2 px-3 py-2 bg-[#A44200] hover:bg-[#823400] text-white text-[13px] font-medium rounded-md transition-colors"
+            >
+              <LogIn className="w-3.5 h-3.5" /> Sign in to edit
+            </Link>
+          </div>
+        )}
       </div>
     </aside>
   );

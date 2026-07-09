@@ -5,11 +5,13 @@ import CycleSelector from "@/components/CycleSelector";
 import { STOCK_CATEGORIES, inr, formatApiError } from "@/lib/helpers";
 import { toast } from "sonner";
 import { Save, Download, PackageCheck, ChevronDown, ChevronRight, FileText } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 export default function Order() {
   const [cycle, setCycle] = useState("O1");
+  const { readOnly } = useAuth();
   const [rows, setRows] = useState([]);
   const [ings, setIngs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -190,7 +192,7 @@ export default function Order() {
       >
         <CycleSelector value={cycle} onChange={setCycle} label="Cycle" testId="order-cycle-selector" />
         {hasDirty && <div className="text-[12px] text-[#D97B29]">Unsaved</div>}
-        <button data-testid="save-order-btn" disabled={!hasDirty || saving} onClick={saveAll}
+        <button data-testid="save-order-btn" disabled={!hasDirty || saving || readOnly} onClick={saveAll}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-[#A44200] hover:bg-[#823400] disabled:opacity-50 text-white text-[13px] rounded-md">
           <Save className="w-3.5 h-3.5" /> {saving ? "Saving…" : "Save"}
         </button>

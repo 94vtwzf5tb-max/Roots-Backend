@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { formatApiError, SKU_CATEGORIES, inr } from "@/lib/helpers";
 import { toast } from "sonner";
 import { Plus, Trash2, Search, X, ChefHat, ChevronDown, ChevronRight, Pencil } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 const emptyLine = () => ({ ingredient: "", unit: "g/ml/pcs", qty_per_sku: 0, cost_per_unit: 0 });
 const emptyRecipe = () => ({
@@ -15,6 +16,7 @@ const emptyRecipe = () => ({
 });
 
 export default function Recipes() {
+  const { readOnly } = useAuth();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -152,7 +154,8 @@ export default function Recipes() {
         </div>
         <button
           data-testid="add-recipe-btn" onClick={openNew}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#A44200] hover:bg-[#823400] text-white text-[13px] rounded-md"
+          disabled={readOnly}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#A44200] hover:bg-[#823400] disabled:opacity-40 disabled:cursor-not-allowed text-white text-[13px] rounded-md"
         >
           <Plus className="w-3.5 h-3.5" /> Add Recipe
         </button>
@@ -198,14 +201,18 @@ export default function Recipes() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
-                        <button onClick={() => openEdit(g)} data-testid={`edit-sku-${g.sku_menu_item}`}
-                          className="p-2 rounded-md hover:bg-[#F1EFEB] text-[#5B544D]" title="Edit recipe">
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={() => delSku(g.sku_menu_item)} data-testid={`delete-sku-${g.sku_menu_item}`}
-                          className="p-2 rounded-md hover:bg-[#F9E5E5] text-[#B83A3A]" title="Delete recipe">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {!readOnly && (
+                          <>
+                            <button onClick={() => openEdit(g)} data-testid={`edit-sku-${g.sku_menu_item}`}
+                              className="p-2 rounded-md hover:bg-[#F1EFEB] text-[#5B544D]" title="Edit recipe">
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => delSku(g.sku_menu_item)} data-testid={`delete-sku-${g.sku_menu_item}`}
+                              className="p-2 rounded-md hover:bg-[#F9E5E5] text-[#B83A3A]" title="Delete recipe">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </button>
                     {open && (
@@ -230,6 +237,7 @@ export default function Recipes() {
                                   <input
                                     type="number" step="0.01" defaultValue={i.qty_per_sku}
                                     data-testid={`inline-qty-${i.id}`}
+                                    disabled={readOnly}
                                     onBlur={e => saveLineField(i, "qty_per_sku", e.target.value)}
                                     className="inline-input"
                                   />
@@ -238,16 +246,19 @@ export default function Recipes() {
                                   <input
                                     type="number" step="0.01" defaultValue={i.cost_per_unit}
                                     data-testid={`inline-cost-${i.id}`}
+                                    disabled={readOnly}
                                     onBlur={e => saveLineField(i, "cost_per_unit", e.target.value)}
                                     className="inline-input"
                                   />
                                 </td>
                                 <td className="num">{inr((i.qty_per_sku || 0) * (i.cost_per_unit || 0))}</td>
                                 <td className="text-right">
-                                  <button onClick={() => delOne(i.id)} data-testid={`delete-line-${i.id}`}
-                                    className="text-[#B83A3A] hover:bg-[#F9E5E5] p-1 rounded">
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
+                                  {!readOnly && (
+                                    <button onClick={() => delOne(i.id)} data-testid={`delete-line-${i.id}`}
+                                      className="text-[#B83A3A] hover:bg-[#F9E5E5] p-1 rounded">
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  )}
                                 </td>
                               </tr>
                             ))}
