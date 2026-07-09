@@ -1,0 +1,96 @@
+{
+  "theme": "light",
+  "archetype": "Organic & Earthy (Operations Dashboard)",
+  "typography": {
+    "fonts": {
+      "headings": "Cabinet Grotesk",
+      "body": "IBM Plex Sans",
+      "monospace": "IBM Plex Mono"
+    },
+    "guidelines": "Use Cabinet Grotesk for all major headings (H1-H3) and key metric numbers to give a structured, professional, yet distinctive look. Use IBM Plex Sans for body, tables, and dense data, ensuring high legibility. Avoid Inter or Roboto entirely. Tracking should be tight on headings (`tracking-tight`) and normal on body. Apply `font-medium` to table headers."
+  },
+  "colors": {
+    "background": {
+      "main": "#F9F8F6",
+      "sidebar": "#F1EFEB",
+      "surface": "#FFFFFF"
+    },
+    "text": {
+      "primary": "#2D2824",
+      "secondary": "#5B544D",
+      "muted": "#8A8178",
+      "inverse": "#F9F8F6"
+    },
+    "brand": {
+      "primary": "#A44200",
+      "primaryHover": "#823400",
+      "accent": "#D97B29"
+    },
+    "status": {
+      "success": "#4C6B56",
+      "successBackground": "#E3EDE6",
+      "warning": "#D97B29",
+      "warningBackground": "#FDF2E3",
+      "danger": "#B83A3A",
+      "dangerBackground": "#F9E5E5"
+    },
+    "borders": "#E6E2DC",
+    "guidelines": "Do not use standard SaaS blue or AI purple gradients. This is a food operations dashboard—colors must feel tactile, earthy, and grounded. The primary brand color is a Deep Terracotta (#A44200) used sparingly for key CTAs. Status colors (Sage Green, Warning Ochre) must be used functionally to indicate health and variance."
+  },
+  "layouts": {
+    "dashboard": "Collapsible left-sidebar navigation with a top-header for context (Current Cycle, Outlet). The main content area should use a 'Bento' or high-density grid approach for summaries.",
+    "spacing": "Use generous padding (`p-6` or `p-8`) for major containers. Inside data tables, use tighter spacing (`py-2 px-4`) to maximize information density without feeling cluttered.",
+    "cards": "Flat design with crisp 1px borders (`border-stone-200`). Radius should be subtle (`rounded-md` or 6px). Avoid heavy drop shadows; rely on borders for definition."
+  },
+  "components": {
+    "buttons": "Slightly rounded (`rounded-md`). Primary buttons have a solid background (`bg-[#A44200]`) with white text. Secondary buttons are outline or subtle filled (`bg-stone-100 text-stone-800 hover:bg-stone-200`).",
+    "inputs": "Shadcn standard but styled with `border-stone-300`, `focus:ring-[#A44200]`, and subtle earthy backgrounds. Never use fully transparent backgrounds for dropdowns.",
+    "tables": "Data-heavy tables must have a sticky header, alternating subtle row colors (`bg-white` and `bg-stone-50`), and clear alignment (numbers right-aligned, text left-aligned).",
+    "kpi_cards": "Top-left quadrant prioritized for primary metrics (Health Score, Wastage %). Include sparklines or clear delta indicators (+/- %)."
+  },
+  "visual_enhancers": {
+    "borders": "Use grid-style borders to separate data cleanly. The 'Technical' look with `border-collapse` and 1px borders is ideal for operational clarity.",
+    "shadows": "Minimal. Use `shadow-sm` on hover for interactive elements, but keep structural components flat.",
+    "empty_states": "Show a subtle earthy illustration or icon with a clear 'Next Best Action' CTA."
+  },
+  "motion": {
+    "guidelines": "Keep animations fast and minimal. Micro-interactions on hover (slight background darken) and smooth transitions for sidebar collapse. Avoid bouncy or slow animations.",
+    "table_rows": "Fade in sequentially on initial load (staggered)."
+  },
+  "accessibility": {
+    "contrast": "Ensure text against background meets APCA standards. Terracotta text over light backgrounds must be bolded if it fails contrast at regular weight.",
+    "focus": "All inputs and buttons must have a visible `focus:ring-2 focus:ring-offset-1 focus:ring-[#A44200]`."
+  },
+  "media": {
+    "icons": {
+      "library": "@phosphor-icons/react",
+      "style": "Duotone or bold. Use Phosphor Icons for a clean, structural look suitable for data density."
+    },
+    "images": [
+      {
+        "url": "https://images.unsplash.com/photo-1535850452425-140ee4a8dbae?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1ODh8MHwxfHNlYXJjaHwyfHxyZXN0YXVyYW50JTIwa2l0Y2hlbiUyMGJsdXJyZWR8ZW58MHx8fHwxNzgzNjMwOTgwfDA&ixlib=rb-4.1.0&q=85",
+        "category": "Auth Background",
+        "description": "Moody blurred restaurant scene for the login screen right-panel overlay."
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1466637574441-749b8f19452f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1ODR8MHwxfHNlYXJjaHwxfHxmcmVzaCUyMGluZ3JlZGllbnRzJTIwY3VsaW5hcnl8ZW58MHx8fHwxNzgzNjMwOTgwfDA&ixlib=rb-4.1.0&q=85",
+        "category": "Empty State",
+        "description": "Fresh culinary ingredients, useful for onboarding or 'No Data' screens."
+      }
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Use `.js` files for React components, NOT `.tsx`.",
+    "Ensure 'Cabinet Grotesk' is imported via a font CDN or standard webfont strategy. Same for 'IBM Plex Sans'.",
+    "Implement multi-user auth (mocked) and direct the user to the operational dashboard upon login.",
+    "The primary feature is 'Order to be Packed'. Make sure this screen is data-dense, easy to scan, and allows inline editing for 'Delivered' / 'Received' quantities.",
+    "Use Recharts or Shadcn Charts for the 'Owner Summary' KPI dashboard, focusing on Line/Bar charts.",
+    "Use `data-testid` on all key interactive elements (buttons, inputs, links)."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "Do not converge toward generic AI outputs (e.g., violet/blue gradients). Stick strictly to the Organic & Earthy palette.",
+    "Do not center-align the main app layout. Data applications must be left-aligned and structured via a robust grid.",
+    "Never use placeholder characters or AI emojis (🤖💡) for icons. Use Phosphor Icons exclusively.",
+    "Provide clear feedback (using Sonner toasts) for operations like saving forecast data or updating delivery quantities."
+  ]
+}
