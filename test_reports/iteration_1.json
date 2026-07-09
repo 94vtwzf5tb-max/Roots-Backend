@@ -1,0 +1,47 @@
+{
+  "summary": "Backend: 20/20 pytest cases passed after fixing 1 CRITICAL bug (recipe creation returned 500 due to unstripped ObjectId). Frontend: full e2e flow validated end-to-end — register/login → add recipes → save forecast → set inventory → Order to be Packed shows to_order=306 for Iceberg (matches max(0, 20*20-100)*1.02 formula) → save delivered=310/received=305 → variance=5 → CSV export → Variance page shows CHECK status → Settings save → Cycle selector dropdown works → Logout. Priority feature (Order to be Packed) is fully functional.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/", "issue": "Returns 404. The `@api.get('/')` route is declared AFTER `app.include_router(api)`, so it's never mounted. Dead code – not user-facing but should be moved above include_router or removed."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Variance sign convention", "issue": "Order-to-be-Packed page shows variance = delivered - received (=+5, green), but Variance Check page shows variance_qty = received - delivered (=-5, red). Same physical delta shown with opposite sign on two adjacent screens. Not a bug but confusing UX.", "affected_selectors": ["order-row-*", "variance-row-*"]}
+    ],
+    "design_issues": [
+      {"screen": "Planning (Cycle Planning)", "issues": ["Console warning: 'Each child in a list should have a unique key prop.' — In /app/frontend/src/pages/Planning.js the map uses fragment shorthand `<>...</>` around 4 keyed <th>/<td> elements per cycle; key must be on the fragment. Replace with `<React.Fragment key={c}>...`."]},
+      {"screen": "Dashboard", "issues": ["Recharts logs width(-1)/height(-1) warnings on initial mount — cosmetic, self-resolves after container measures. Consider adding minHeight to ResponsiveContainer wrapper."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "(Optional) Fix key warning in Planning.js: use `<React.Fragment key={c}>` instead of `<>` around per-cycle 4-column group.",
+    "(Optional) Move `@api.get('/')` route above `app.include_router(api)` or delete it — currently unreachable.",
+    "(Optional/UX) Align sign convention for 'Variance' between /order and /variance pages — both should show received - delivered (or delivered - received) consistently."
+  ],
+  "critical_code_review_comments": [
+    "FIXED: POST /api/recipes returned 500 because `motor.insert_one` mutates the passed dict adding an ObjectId `_id`, and the endpoint returned the dict directly → FastAPI JSON serialization failed with `TypeError: 'ObjectId' object is not iterable`. Fix: `doc.pop('_id', None)` before returning. This was a complete blocker for the entire app since no recipes could be created.",
+    "CORS `allow_origins=['*']` should not be combined with `allow_credentials=True` per spec; current code uses explicit FRONTEND_URL which is fine, but CORS_ORIGINS env var in .env is set to `*` (unused).",
+    "Planning.js uses React fragment shorthand `<>` with keyed children — triggers key warning in console.",
+    "Order.js delivered/received inputs use `defaultValue` — if the row re-renders after save, the input keeps stale UI value (not resynced with props). Fine here because saveAll refetches and the whole page re-renders, but bug-prone pattern.",
+    "server.py `_compute_planning` recomputes on every /order/{cycle}, /variance/{cycle}, /planning, /summary call — for large datasets this will be slow. Consider caching or a mongo aggregation.",
+    "`create_index` on `recipes` uses `(ingredient, sku_menu_item)` compound unique — good. But no unique index on ingredient alone in ingredients collection is defined here (there IS `ingredient` unique). OK."
+  ],
+  "updated_files": [
+    "/app/backend/server.py (fixed create_recipe ObjectId serialization bug)",
+    "/app/backend/tests/backend_test.py (new comprehensive pytest suite)"
+  ],
+  "success_rate": {"backend": "100% (20/20)", "frontend": "100% e2e flow"},
+  "test_credentials": "admin@roots.com / admin123 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Test data prefixed with E2E_/TEST_ was created by pytest fixtures and playwright e2e; pytest fixtures teardown deletes recipes. Playwright e2e leaves 2 recipes (E2E_Iceberg_*, E2E_WhiteBread_*), 1 SKU (E2E_VegSandwich_*), and their ingredient/forecast rows in the DB for main agent to inspect if desired.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend pytest suite lives at /app/backend/tests/backend_test.py — regression-ready. Uses REACT_APP_BACKEND_URL env var and admin credentials from test_credentials.md. Priority feature (Order to be Packed) validated end-to-end with formula math verified. Cycle selector is a custom button dropdown (data-testid=order-cycle-selector) — do NOT use page.select_option; click the button then click [data-testid=cycle-opt-Ox]. Delivered/Received inputs use defaultValue, so onChange fires but UI won't re-sync from state — this is why the Order page reloads via GET /order/{cycle} after Save. Emails are lowercased server-side (register/login) — factor into TEST_ prefixes.",
+  "rca_of_the_issue": "Bug: POST /api/recipes → 500. Root cause: In backend/server.py `create_recipe`, motor's `db.recipes.insert_one(doc)` injects an `_id: ObjectId(...)` field into the `doc` dict in-place. The handler then only added `doc['id']` and returned `doc` — which now contained a raw ObjectId. FastAPI's jsonable_encoder cannot serialize ObjectId → 500. Reproduction: `curl -X POST /api/recipes -d '{...}'` with valid cookie. Mitigation: `doc.pop('_id', None)` before returning (applied). All other CRUD endpoints use `update_one` which does not mutate doc, so they were unaffected."
+}
