@@ -4,7 +4,9 @@ import { PageHeader } from "@/components/PageHeader";
 import CycleSelector from "@/components/CycleSelector";
 import { STOCK_CATEGORIES, inr, formatApiError } from "@/lib/helpers";
 import { toast } from "sonner";
-import { Save, Download, PackageCheck, ChevronDown, ChevronRight } from "lucide-react";
+import { Save, Download, PackageCheck, ChevronDown, ChevronRight, FileText } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export default function Order() {
   const [cycle, setCycle] = useState("O1");
@@ -79,6 +81,88 @@ export default function Order() {
     toast.success("CSV downloaded");
   };
 
+  const exportPdf = () => {
+    const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const now = new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+
+    // Header
+    doc.setFillColor(164, 66, 0);
+    doc.rect(0, 0, pageWidth, 60, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(20);
+    doc.text("ROOTS · Ambala City", 40, 30);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.text("Order to be Packed", 40, 48);
+    doc.setFontSize(10);
+    doc.text(`Cycle: ${cycle}`, pageWidth - 40, 30, { align: "right" });
+    doc.text(now, pageWidth - 40, 48, { align: "right" });
+
+    // Summary
+    doc.setTextColor(45, 40, 36);
+    doc.setFontSize(9);
+    doc.text(`Items to Order: ${totalItems}  |  Total Value: ${inr(totalValue)}  |  Categories: ${grouped.length}`, 40, 82);
+
+    // Signatures / meta
+    let startY = 100;
+
+    grouped.forEach(g => {
+      const catTotal = g.items.reduce((s, i) => s + i.order_value, 0);
+      autoTable(doc, {
+        startY,
+        head: [[
+          { content: `${g.category}  ·  ${g.items.length} items  ·  ${inr(catTotal)}`, colSpan: 9,
+            styles: { fillColor: [241, 239, 235], textColor: [45, 40, 36], fontStyle: "bold", halign: "left", fontSize: 10 } }
+        ], [
+          "Ingredient", "Unit", "To Order", "Rounded", "Order Value", "Delivered\n(Cantt)", "Received\n(City)", "Variance", "Notes"
+        ]],
+        body: g.items.map(r => [
+          r.ingredient, r.unit, String(r.to_order), String(r.rounded_qty),
+          inr(r.order_value),
+          r.delivered ? String(r.delivered) : "____",
+          r.received ? String(r.received) : "____",
+          r.variance ? String(r.variance) : "",
+          "",
+        ]),
+        theme: "grid",
+        headStyles: { fillColor: [230, 226, 220], textColor: [91, 84, 77], fontStyle: "bold", fontSize: 9 },
+        bodyStyles: { fontSize: 9, textColor: [45, 40, 36] },
+        alternateRowStyles: { fillColor: [250, 249, 247] },
+        columnStyles: {
+          0: { cellWidth: 130 },
+          1: { cellWidth: 45 },
+          2: { cellWidth: 55, halign: "right" },
+          3: { cellWidth: 55, halign: "right" },
+          4: { cellWidth: 75, halign: "right" },
+          5: { cellWidth: 65, halign: "right" },
+          6: { cellWidth: 65, halign: "right" },
+          7: { cellWidth: 55, halign: "right" },
+          8: { cellWidth: "auto" },
+        },
+        margin: { left: 40, right: 40 },
+      });
+      startY = doc.lastAutoTable.finalY + 14;
+    });
+
+    // Footer signatures
+    if (startY > doc.internal.pageSize.getHeight() - 80) {
+      doc.addPage();
+      startY = 40;
+    }
+    doc.setDrawColor(230, 226, 220);
+    doc.line(60, startY + 40, 240, startY + 40);
+    doc.line(pageWidth - 240, startY + 40, pageWidth - 60, startY + 40);
+    doc.setFontSize(9);
+    doc.setTextColor(138, 129, 120);
+    doc.text("Cantt Outlet (Packed by)", 60, startY + 55);
+    doc.text("City Outlet (Received by)", pageWidth - 240, startY + 55);
+
+    doc.save(`roots-order-${cycle}.pdf`);
+    toast.success("PDF downloaded");
+  };
+
   const hasDirty = Object.keys(dirty).length > 0;
   const grouped = STOCK_CATEGORIES.map(cat => ({
     category: cat,
@@ -109,6 +193,10 @@ export default function Order() {
         <button data-testid="export-csv-btn" onClick={exportCsv}
           className="flex items-center gap-1.5 px-3 py-1.5 border border-[#E6E2DC] hover:bg-[#F6F1EA] text-[#5B544D] text-[13px] rounded-md">
           <Download className="w-3.5 h-3.5" /> CSV
+        </button>
+        <button data-testid="export-pdf-btn" onClick={exportPdf}
+          className="flex items-center gap-1.5 px-3 py-1.5 border border-[#A44200] text-[#A44200] hover:bg-[#FDF2E3] text-[13px] rounded-md">
+          <FileText className="w-3.5 h-3.5" /> PDF
         </button>
       </PageHeader>
 

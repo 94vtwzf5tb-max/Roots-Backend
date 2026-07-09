@@ -310,6 +310,54 @@ async def delete_recipe(rid: str, _: dict = Depends(get_current_user)):
     await db.recipes.delete_one({"_id": ObjectId(rid)})
     return {"ok": True}
 
+class IngredientLine(BaseModel):
+    ingredient: str
+    unit: str = "g/ml/pcs"
+    qty_per_sku: float = 0
+    cost_per_unit: float = 0
+
+class RecipeBulkIn(BaseModel):
+    sku_menu_item: str
+    category: str = "Other"
+    selling_price: float = 0
+    ingredients: List[IngredientLine]
+    replace_existing: bool = False  # if True, delete existing recipes for this SKU first
+
+@api.post("/recipes/bulk")
+async def create_recipe_bulk(data: RecipeBulkIn, _: dict = Depends(get_current_user)):
+    """Create/replace multiple ingredient rows for a single SKU / menu item at once."""
+    if data.replace_existing:
+        await db.recipes.delete_many({"sku_menu_item": data.sku_menu_item})
+
+    created = []
+    skipped = []
+    for line in data.ingredients:
+        doc = {
+            "ingredient": line.ingredient,
+            "unit": line.unit,
+            "sku_menu_item": data.sku_menu_item,
+            "qty_per_sku": line.qty_per_sku,
+            "cost_per_unit": line.cost_per_unit,
+            "category": data.category,
+            "selling_price": data.selling_price,
+        }
+        try:
+            res = await db.recipes.insert_one(doc)
+            doc.pop("_id", None)
+            doc["id"] = str(res.inserted_id)
+            created.append(doc)
+            await _upsert_ingredient(line.ingredient, line.unit, line.cost_per_unit)
+        except Exception:
+            skipped.append(line.ingredient)
+
+    await _upsert_forecast(data.sku_menu_item, data.category, data.selling_price)
+    return {"created": created, "skipped": skipped, "count": len(created)}
+
+@api.delete("/recipes/sku/{sku}")
+async def delete_recipes_by_sku(sku: str, _: dict = Depends(get_current_user)):
+    result = await db.recipes.delete_many({"sku_menu_item": sku})
+    return {"deleted": result.deleted_count}
+
 async def _upsert_ingredient(name: str, unit: str, cost: float):
     existing = await db.ingredients.find_one({"ingredient": name})
     if not existing:
